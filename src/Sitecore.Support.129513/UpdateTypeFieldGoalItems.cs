@@ -20,6 +20,10 @@ namespace Sitecore.Support.Hooks
                 var databaseName = "master";
                 var fieldName = "Type";
                 var database = Factory.GetDatabase(databaseName);
+                if (database == null)
+                {
+                    return;
+                }
 
                 /* 
                 
