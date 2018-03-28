@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using Sitecore.Data;
 using Sitecore.Data.Items;
 
 namespace Sitecore.Support.Hooks
@@ -19,18 +20,14 @@ namespace Sitecore.Support.Hooks
             {
                 var databaseName = "master";
                 var fieldName = "Type";
-                var database = Factory.GetDatabase(databaseName);
+                var database = Factory.GetDatabase(databaseName, false);
                 if (database == null)
                 {
                     return;
                 }
 
-                /* 
-                
-                
+                /*                 
                 the code below is suitable when the same field of different items has to be populated with different values (e.g. unique type names)
-
-
                 */
 
                 // array of item paths
