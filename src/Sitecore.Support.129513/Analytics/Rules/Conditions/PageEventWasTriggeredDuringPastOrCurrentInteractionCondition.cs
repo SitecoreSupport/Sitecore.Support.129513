@@ -1,4 +1,6 @@
-﻿namespace Sitecore.Support.Analytics.Rules.Conditions
+﻿using Sitecore.Support.Rules.Conditions;
+
+namespace Sitecore.Support.Analytics.Rules.Conditions
 {
 	using Sitecore.Analytics;
 	using Sitecore.Analytics.Core;
@@ -16,7 +18,7 @@
 		private Guid? pageEventGuid;
 
 		private bool pageEventGuidInitialized;
-
+	  private bool filterByCustomData;
 		public string PageEventId
 		{
 			get;
@@ -52,6 +54,7 @@
 		protected PageEventWasTriggeredDuringPastOrCurrentInteractionCondition(bool filterByCustomData)
 			: base(filterByCustomData)
 		{
+		  this.filterByCustomData = filterByCustomData;
 		}
 
 		protected override bool Execute(T ruleContext)
@@ -88,6 +91,40 @@
 		{
 			Assert.ArgumentNotNull((object)interaction, "interaction");
 			Assert.IsNotNull((object)interaction.Pages, "interaction.Pages is not initialized.");
+		  if (this.filterByCustomData)
+		  {
+		    IEnumerable<PageEventData> source = Enumerable.Where<PageEventData>(Enumerable.SelectMany<Page, PageEventData>((IEnumerable<Page>)interaction.Pages, (Func<Page, IEnumerable<PageEventData>>)((Page page) => page.PageEvents)), (Func<PageEventData, bool>)delegate (PageEventData pageEvent)
+		    {
+
+		      if (!pageEvent.IsGoal)
+		      {
+		        Guid pageEventDefinitionId3 = pageEvent.PageEventDefinitionId;
+		        Guid? b3 = this.PageEventGuid;
+		        return (Guid?)pageEventDefinitionId3 == b3;
+		      }
+		      return false;
+		    });
+		    if (this.CustomData == null)
+		    {
+		      Log.Warn("CustomData can not be null", (object)base.GetType());
+		      return false;
+		    }
+		    IEnumerable<PageEventData> source2 = Enumerable.Where<PageEventData>(source, (Func<PageEventData, bool>)delegate (PageEventData entry)
+		    {
+
+		      if (entry.Data != null)
+		      {
+		        return ConditionsUtility.CompareStrings(entry.Data, this.CustomData, this.CustomDataOperatorId);
+		      }
+		      return false;
+		    });
+		    return Enumerable.Any<PageEventData>(source2, (Func<PageEventData, bool>)delegate (PageEventData entry)
+		    {
+		      Guid pageEventDefinitionId2 = entry.PageEventDefinitionId;
+		      Guid? b2 = this.PageEventGuid;
+		      return (Guid?)pageEventDefinitionId2 == b2;
+		    });
+		  }
 			return Enumerable.Any<PageEventData>(Enumerable.SelectMany<Page, PageEventData>((IEnumerable<Page>)interaction.Pages, (Func<Page, IEnumerable<PageEventData>>)((Page page) => page.PageEvents)), (Func<PageEventData, bool>)delegate (PageEventData pageEvent)
 			{
 				if (!pageEvent.IsGoal)

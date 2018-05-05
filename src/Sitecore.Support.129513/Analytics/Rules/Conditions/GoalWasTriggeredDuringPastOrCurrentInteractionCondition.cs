@@ -8,129 +8,189 @@ using Sitecore.Support.Analytics.Rules.Conditions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Sitecore.Support.Rules.Conditions;
 
 namespace Sitecore.Support.Analytics.Rules.Conditions
 {
 
 
-	public class GoalWasTriggeredDuringPastOrCurrentInteractionCondition<T> : HasEventOccurredCondition<T> where T : RuleContext
+	public class GoalWasTriggeredDuringPastOrCurrentInteractionCondition<T> : Sitecore.Support.Analytics.Rules.Conditions.HasEventOccurredCondition<T>
+					where T : RuleContext
 	{
-		private Guid? goalGuid;
+		/// <summary>
+		/// The goal GUID.
+		/// </summary>
+		private Guid? _goalGuid;
 
-		private bool goalGuidInitialized;
+		/// <summary>
+		/// The is goal GUID initialized.
+		/// </summary>
+		private bool _goalGuidInitialized;
 
-		public string GoalId
+	  private bool filterByCustomData;
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="GoalWasTriggeredDuringPastOrCurrentInteractionCondition{T}"/> class.
+		/// </summary>
+		public GoalWasTriggeredDuringPastOrCurrentInteractionCondition()
+				: base(false)
 		{
-			get;
-			set;
 		}
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="GoalWasTriggeredDuringPastOrCurrentInteractionCondition{T}"/> class.
+		/// </summary>
+		/// <param name="filterByCustomData">
+		/// If set to <c>true</c>, the key behavior cache entries will be filtered by custom data.
+		/// </param>
+		protected GoalWasTriggeredDuringPastOrCurrentInteractionCondition(bool filterByCustomData)
+				: base(filterByCustomData)
+		{
+		  this.filterByCustomData = filterByCustomData;
+		}
+
+		/// <summary>
+		/// Gets or sets the identifier of the goal.
+		/// </summary>
+		/// <value>
+		/// A <see cref="string"/> representing the ID of the goal.
+		/// </value>
+		[NotNull]
+		public string GoalId { get; set; }
+
+		/// <summary>
+		/// Gets the goal GUID.
+		/// </summary>
+		/// <value>
+		/// The goal GUID.
+		/// </value>
 		private Guid? GoalGuid
 		{
 			get
 			{
-				if (this.goalGuidInitialized)
+				if (_goalGuidInitialized)
 				{
-					return this.goalGuid;
+					return _goalGuid;
 				}
+
 				try
 				{
-					this.goalGuid = new Guid(this.GoalId);
+					_goalGuid = new Guid(GoalId);
 				}
 				catch
 				{
-					Log.Warn(string.Format("Could not convert value to guid: {0}", this.GoalId), (object)base.GetType());
+					Log.Warn($"Could not convert value to guid: {GoalId}", GetType());
 				}
-				this.goalGuidInitialized = true;
-				return this.goalGuid;
+
+				_goalGuidInitialized = true;
+
+				return _goalGuid;
 			}
 		}
 
-		public GoalWasTriggeredDuringPastOrCurrentInteractionCondition()
-			: base(false)
+		/// <summary>
+		/// Executes the specified rule context.
+		/// </summary>
+		/// <param name="ruleContext">
+		/// The rule context.
+		/// </param>
+		/// <returns>
+		/// <c>True</c>, if the condition succeeds, otherwise <c>false</c>.
+		/// </returns>
+		protected override bool Execute([NotNull] T ruleContext)
 		{
-		}
+			Assert.ArgumentNotNull(ruleContext, "ruleContext");
+			Assert.IsNotNull(Tracker.Current, "Tracker.Current is not initialized");
+			Assert.IsNotNull(Tracker.Current.Session, "Tracker.Current.Session is not initialized");
+			Assert.IsNotNull(Tracker.Current.Session.Interaction, "Tracker.Current.Session.Interaction is not initialized");
 
-		protected GoalWasTriggeredDuringPastOrCurrentInteractionCondition(bool filterByCustomData)
-			: base(filterByCustomData)
-		{
-		}
-
-		protected override bool Execute(T ruleContext)
-		{
-			//IL_0010: Unknown result type (might be due to invalid IL or missing references)
-			//IL_001a: Expected O, but got Unknown
-			//IL_001f: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0024: Unknown result type (might be due to invalid IL or missing references)
-			//IL_002e: Expected O, but got Unknown
-			//IL_0033: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0038: Unknown result type (might be due to invalid IL or missing references)
-			//IL_003d: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0047: Expected O, but got Unknown
-			//IL_005f: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0064: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0069: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0077: Unknown result type (might be due to invalid IL or missing references)
-			//IL_007c: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0086: Expected O, but got Unknown
-			//IL_008b: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0090: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0095: Unknown result type (might be due to invalid IL or missing references)
-			//IL_009a: Unknown result type (might be due to invalid IL or missing references)
-			//IL_009c: Unknown result type (might be due to invalid IL or missing references)
-			Assert.ArgumentNotNull((object)ruleContext, "ruleContext");
-			Assert.IsNotNull((object)Tracker.Current, "Tracker.Current is not initialized");
-			Assert.IsNotNull((object)Tracker.Current.Session, "Tracker.Current.Session is not initialized");
-			Assert.IsNotNull((object)Tracker.Current.Session.Interaction, "Tracker.Current.Session.Interaction is not initialized");
-			if (!this.GoalGuid.HasValue)
+			if (GoalGuid == null)
 			{
 				return false;
 			}
-			if (this.HasEventOccurredInInteraction(Tracker.Current.Session.Interaction))
+
+			if (HasEventOccurredInInteraction(Tracker.Current.Session.Interaction))
 			{
 				return true;
 			}
-			Assert.IsNotNull((object)Tracker.Current.Contact, "Tracker.Current.Contact is not initialized");
-			KeyBehaviorCache keyBehaviorCache = ContactKeyBehaviorCacheExtension.GetKeyBehaviorCache(Tracker.Current.Contact);
+
+			Assert.IsNotNull(Tracker.Current.Contact, "Tracker.Current.Contact is not initialized");
+
+		  KeyBehaviorCache keyBehaviorCache = Tracker.Current.Contact.GetKeyBehaviorCache();
+
 			return Enumerable.Any<KeyBehaviorCacheEntry>(this.FilterKeyBehaviorCacheEntries(keyBehaviorCache), (Func<KeyBehaviorCacheEntry, bool>)delegate (KeyBehaviorCacheEntry entry)
-			{
-				//IL_0000: Unknown result type (might be due to invalid IL or missing references)
-				Guid id = entry.Id;
-				Guid? b = this.GoalGuid;
-				return (Guid?)id == b;
-			});
+		  {
+		    Guid id = entry.Id;
+		    Guid? b = this.GoalGuid;
+		    return (Guid?)id == b;
+		  });
 		}
 
+		/// <summary>
+		/// Gets key behavior cache entries.
+		/// </summary>
+		/// <param name="keyBehaviorCache">
+		/// The key behavior cache.
+		/// </param>
+		/// <returns>
+		/// The <see cref="IEnumerable{KeyBehaviorCacheEntry}"/>.
+		/// </returns>
 		protected override IEnumerable<KeyBehaviorCacheEntry> GetKeyBehaviorCacheEntries(KeyBehaviorCache keyBehaviorCache)
 		{
-			//IL_0000: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0006: Expected O, but got Unknown
-			//IL_000b: Unknown result type (might be due to invalid IL or missing references)
-			Assert.ArgumentNotNull((object)keyBehaviorCache, "keyBehaviorCache");
+			Assert.ArgumentNotNull(keyBehaviorCache, "keyBehaviorCache");
+
 			return keyBehaviorCache.Goals;
 		}
 
+		/// <summary>
+		/// Checks whether event occurred in interaction.
+		/// </summary>
+		/// <param name="interaction">
+		/// The interaction.
+		/// </param>
+		/// <returns>
+		/// The <see cref="bool"/>
+		/// <c>true</c> if the event occurred in the interaction; otherwise, <c>false</c>.
+		/// </returns>
 		protected override bool HasEventOccurredInInteraction(IInteractionData interaction)
 		{
-			//IL_0000: Unknown result type (might be due to invalid IL or missing references)
-			//IL_0006: Expected O, but got Unknown
-			//IL_000b: Unknown result type (might be due to invalid IL or missing references)
-			//IL_001b: Unknown result type (might be due to invalid IL or missing references)
-			Assert.ArgumentNotNull((object)interaction, "interaction");
-			Assert.IsNotNull((object)interaction.Pages, "interaction.Pages is not initialized.");
-			return Enumerable.Any<PageEventData>(Enumerable.SelectMany<Page, PageEventData>((IEnumerable<Page>)interaction.Pages, (Func<Page, IEnumerable<PageEventData>>)((Page page) => page.PageEvents)), (Func<PageEventData, bool>)delegate (PageEventData pageEvent)
-			{
-				//IL_0000: Unknown result type (might be due to invalid IL or missing references)
-				//IL_0008: Unknown result type (might be due to invalid IL or missing references)
-				if (pageEvent.IsGoal)
-				{
-					Guid pageEventDefinitionId = pageEvent.PageEventDefinitionId;
-					Guid? b = this.GoalGuid;
-					return (Guid?)pageEventDefinitionId == b;
-				}
-				return false;
-			});
+			Assert.ArgumentNotNull(interaction, "interaction");
+			Assert.IsNotNull(interaction.Pages, "interaction.Pages is not initialized.");
+		  if (this.filterByCustomData)
+		  {
+		    IEnumerable<PageEventData> source = Enumerable.Where<PageEventData>(Enumerable.SelectMany<Page, PageEventData>((IEnumerable<Page>)interaction.Pages, (Func<Page, IEnumerable<PageEventData>>)((Page page) => page.PageEvents)), (Func<PageEventData, bool>)delegate (PageEventData pageEvent)
+		    {
+		      if (!pageEvent.IsGoal)
+		      {
+		        Guid pageEventDefinitionId3 = pageEvent.PageEventDefinitionId;
+		        Guid? b3 = this.GoalGuid;
+		        return (Guid?)pageEventDefinitionId3 == b3;
+		      }
+		      return false;
+		    });
+		    if (this.CustomData == null)
+		    {
+		      Log.Warn("CustomData can not be null", (object)base.GetType());
+		      return false;
+		    }
+		    IEnumerable<PageEventData> source2 = Enumerable.Where<PageEventData>(source, (Func<PageEventData, bool>)delegate (PageEventData entry)
+		    {
+		      if (entry.Data != null)
+		      {
+		        return ConditionsUtility.CompareStrings(entry.Data, this.CustomData, this.CustomDataOperatorId);
+		      }
+		      return false;
+		    });
+		    return Enumerable.Any<PageEventData>(source2, (Func<PageEventData, bool>)delegate (PageEventData entry)
+		    {
+		      Guid pageEventDefinitionId2 = entry.PageEventDefinitionId;
+		      Guid? b2 = this.GoalGuid;
+		      return (Guid?)pageEventDefinitionId2 == b2;
+		    });
+		  }
+			var result = interaction.Pages.SelectMany(page => page.PageEvents).Any(pageEvent => pageEvent.IsGoal && pageEvent.PageEventDefinitionId == GoalGuid);
+		  return result;
 		}
 	}
-
 }
+

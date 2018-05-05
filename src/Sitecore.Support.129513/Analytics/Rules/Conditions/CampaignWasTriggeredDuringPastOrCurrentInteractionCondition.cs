@@ -15,6 +15,7 @@
 
 		private bool campaignGuidInitialized;
 
+	  private bool filterByCustomData;
 		public string CampaignId
 		{
 			get;
@@ -50,6 +51,7 @@
 		protected CampaignWasTriggeredDuringPastOrCurrentInteractionCondition(bool filterByCustomData)
 			: base(filterByCustomData)
 		{
+		  this.filterByCustomData = filterByCustomData;
 		}
 
 		protected override bool Execute(T ruleContext)
@@ -64,7 +66,7 @@
 			}
 			if (this.HasEventOccurredInInteraction(Tracker.Current.Session.Interaction))
 			{
-				return true;
+			  return true;
 			}
 			Assert.IsNotNull((object)Tracker.Current.Contact, "Tracker.Current.Contact is not initialized");
 			KeyBehaviorCache keyBehaviorCache = ContactKeyBehaviorCacheExtension.GetKeyBehaviorCache(Tracker.Current.Contact);

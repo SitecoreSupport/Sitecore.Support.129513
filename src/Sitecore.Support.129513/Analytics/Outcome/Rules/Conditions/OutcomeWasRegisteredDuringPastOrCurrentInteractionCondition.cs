@@ -73,7 +73,7 @@
 			KeyBehaviorCache keyBehaviorCache = ContactKeyBehaviorCacheExtension.GetKeyBehaviorCache(Tracker.Current.Contact);
 			return Enumerable.Any<KeyBehaviorCacheEntry>(this.FilterKeyBehaviorCacheEntries(keyBehaviorCache), (Func<KeyBehaviorCacheEntry, bool>)delegate (KeyBehaviorCacheEntry entry)
 			{
-				//IL_0000: Unknown result type (might be due to invalid IL or missing references)
+
 				Guid id = entry.Id;
 				Guid? b = this.OutcomeGuid;
 				return (Guid?)id == b;
