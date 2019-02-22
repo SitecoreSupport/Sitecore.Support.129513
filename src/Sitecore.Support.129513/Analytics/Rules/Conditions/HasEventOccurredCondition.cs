@@ -1,89 +1,86 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Sitecore.Analytics.Tracking;
+﻿using Sitecore.Analytics.Tracking;
 using Sitecore.Diagnostics;
 using Sitecore.Rules;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Sitecore.Rules.Conditions;
-using ConditionsUtility = Sitecore.Support.Rules.Conditions.ConditionsUtility;
 
 namespace Sitecore.Support.Analytics.Rules.Conditions
 {
-	public abstract class HasEventOccurredCondition<T> : WhenCondition<T> where T : RuleContext
-	{
-		private readonly bool filterByCustomData;
+  public abstract class HasEventOccurredCondition<T> : WhenCondition<T> where T : RuleContext
+  {
+    private readonly bool filterByCustomData;
 
-		protected HasEventOccurredCondition(bool filterByCustomData)
-		{
-			this.filterByCustomData = filterByCustomData;
-		}
+    protected HasEventOccurredCondition(bool filterByCustomData)
+    {
+      this.filterByCustomData = filterByCustomData;
+    }
 
-		public string CustomData { get; set; }
+    public string CustomData { get; set; }
 
-		public string CustomDataOperatorId { get; set; }
+    public string CustomDataOperatorId { get; set; }
 
-		public int NumberOfElapsedDays { get; set; }
+    public int NumberOfElapsedDays { get; set; }
 
-		public string NumberOfElapsedDaysOperatorId { get; set; }
+    public string NumberOfElapsedDaysOperatorId { get; set; }
 
-		public int NumberOfPastInteractions { get; set; }
+    public int NumberOfPastInteractions { get; set; }
 
-		public string NumberOfPastInteractionsOperatorId { get; set; }
+    public string NumberOfPastInteractionsOperatorId { get; set; }
 
-		protected virtual IEnumerable<KeyBehaviorCacheEntry> FilterKeyBehaviorCacheEntries(KeyBehaviorCache keyBehaviorCache)
-		{
-			Assert.ArgumentNotNull(keyBehaviorCache, "keyBehaviorCache");
-			var behaviorCacheEntries =
-				FilterKeyBehaviorCacheEntriesByInteractionConditions(
-					keyBehaviorCache.Campaigns.Concat(keyBehaviorCache.Channels)
-						.Concat(keyBehaviorCache.CustomValues)
-						.Concat(keyBehaviorCache.Goals)
-						.Concat(keyBehaviorCache.Outcomes)
-						.Concat(keyBehaviorCache.PageEvents)
-						.Concat(keyBehaviorCache.Venues));
-			if (!filterByCustomData)
-				return
-					Assert.ResultNotNull(GetKeyBehaviorCacheEntries(keyBehaviorCache)
-						.Intersect(behaviorCacheEntries, new KeyBehaviorCacheEntry.KeyBehaviorCacheEntryEqualityComparer()));
-			if (CustomData == null)
-			{
-				Log.Warn("CustomData can not be null", GetType());
-				return Enumerable.Empty<KeyBehaviorCacheEntry>();
-			}
-			behaviorCacheEntries = behaviorCacheEntries.Where(entry =>
-			{
-				return entry.Data != null && ConditionsUtility.CompareStrings(entry.Data, CustomData, CustomDataOperatorId);
-			});
-			return
-				Assert.ResultNotNull(GetKeyBehaviorCacheEntries(keyBehaviorCache)
-					.Intersect(behaviorCacheEntries, new KeyBehaviorCacheEntry.KeyBehaviorCacheEntryEqualityComparer()));
-		}
+    protected virtual IEnumerable<KeyBehaviorCacheEntry> FilterKeyBehaviorCacheEntries(KeyBehaviorCache keyBehaviorCache)
+    {
+      Assert.ArgumentNotNull((object)keyBehaviorCache, nameof(keyBehaviorCache));
+      IEnumerable<KeyBehaviorCacheEntry> behaviorCacheEntries = this.FilterKeyBehaviorCacheEntriesByInteractionConditions(keyBehaviorCache.Campaigns.Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.Channels).Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.CustomValues).Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.Goals).Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.Outcomes).Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.PageEvents).Concat<KeyBehaviorCacheEntry>((IEnumerable<KeyBehaviorCacheEntry>)keyBehaviorCache.Venues));
+      if (this.filterByCustomData)
+      {
+        if (this.CustomData == null)
+        {
+          Log.Warn("CustomData can not be null", (object)this.GetType());
+          return Enumerable.Empty<KeyBehaviorCacheEntry>();
+        }
+        behaviorCacheEntries = behaviorCacheEntries.Where<KeyBehaviorCacheEntry>((Func<KeyBehaviorCacheEntry, bool>)(entry =>
+        {
+          if (entry.Data != null)
+            return ConditionsUtility.CompareStrings(entry.Data, this.CustomData, this.CustomDataOperatorId);
+          return false;
+        }));
+      }
+      return Assert.ResultNotNull<IEnumerable<KeyBehaviorCacheEntry>>(this.GetKeyBehaviorCacheEntries(keyBehaviorCache).Intersect<KeyBehaviorCacheEntry>(behaviorCacheEntries, (IEqualityComparer<KeyBehaviorCacheEntry>)new KeyBehaviorCacheEntry.KeyBehaviorCacheEntryEqualityComparer()));
+    }
 
-		protected virtual IEnumerable<KeyBehaviorCacheEntry> FilterKeyBehaviorCacheEntriesByInteractionConditions(
-			IEnumerable<KeyBehaviorCacheEntry> keyBehaviorCacheEntries)
-		{
-			Assert.ArgumentNotNull(keyBehaviorCacheEntries, "keyBehaviorCacheEntries");
-			if (ConditionsUtility.GetInt32Comparer(NumberOfElapsedDaysOperatorId) == null)
-				return Enumerable.Empty<KeyBehaviorCacheEntry>();
-			var numberOfPastInteractionsComparer = ConditionsUtility.GetInt32Comparer(NumberOfPastInteractionsOperatorId);
-			var numberOfElapsedDaysOperatorsComparer = ConditionsUtility.GetInt32Comparer(NumberOfElapsedDaysOperatorId);
-			if (numberOfPastInteractionsComparer == null)
-				return Enumerable.Empty<KeyBehaviorCacheEntry>();
-			return Assert.ResultNotNull(keyBehaviorCacheEntries.GroupBy(entry => new
-			{
-				entry.InteractionId,
-				entry.InteractionStartDateTime
-			}).OrderByDescending(entries => entries.Key.InteractionStartDateTime).Where((entries, i) =>
-			{
-				if (numberOfElapsedDaysOperatorsComparer((DateTime.UtcNow - entries.Key.InteractionStartDateTime).Days,
-					NumberOfElapsedDays))
-					return numberOfPastInteractionsComparer(i + 2, ((HasEventOccurredCondition<T>)this).NumberOfPastInteractions);
-				return false;
-			}).SelectMany(entries => (IEnumerable<KeyBehaviorCacheEntry>)entries));
-		}
+    protected virtual IEnumerable<KeyBehaviorCacheEntry> FilterKeyBehaviorCacheEntriesByInteractionConditions([NotNull] IEnumerable<KeyBehaviorCacheEntry> keyBehaviorCacheEntries)
+    {
+      Assert.ArgumentNotNull(keyBehaviorCacheEntries, "keyBehaviorCacheEntries");
 
-		protected abstract IEnumerable<KeyBehaviorCacheEntry> GetKeyBehaviorCacheEntries(KeyBehaviorCache keyBehaviorCache);
+      var numberOfElapsedDaysComparer = ConditionsUtility.GetInt32Comparer(NumberOfElapsedDaysOperatorId);
+      if (numberOfElapsedDaysComparer == null)
+      {
+        return Enumerable.Empty<KeyBehaviorCacheEntry>();
+      }
 
-		protected abstract bool HasEventOccurredInInteraction(IInteractionData interaction);
-	}
+      var numberOfPastInteractionsComparer = ConditionsUtility.GetInt32Comparer(NumberOfPastInteractionsOperatorId);
+      if (numberOfPastInteractionsComparer == null)
+      {
+        return Enumerable.Empty<KeyBehaviorCacheEntry>();
+      }
+
+      var filtered = keyBehaviorCacheEntries
+        .GroupBy(entry => new
+        {
+          entry.InteractionId,
+          entry.InteractionStartDateTime
+        })
+        .OrderByDescending(entries => entries.Key.InteractionStartDateTime)
+        .Where((entries, i) => numberOfElapsedDaysComparer((DateTime.UtcNow - entries.Key.InteractionStartDateTime).Days, NumberOfElapsedDays) && numberOfPastInteractionsComparer(i + 2, NumberOfPastInteractions))
+        .SelectMany(entries => entries);
+
+      return Assert.ResultNotNull(filtered);
+    }
+
+    protected abstract IEnumerable<KeyBehaviorCacheEntry> GetKeyBehaviorCacheEntries(KeyBehaviorCache keyBehaviorCache);
+
+    protected abstract bool HasEventOccurredInInteraction(IInteractionData interaction);
+  }
 }
